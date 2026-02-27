@@ -9,12 +9,17 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
 
   // 2. Cấu hình CORS (Đã cập nhật để linh hoạt hơn)
-  app.enableCors({
-    // Cho phép cả URL localhost và URL thực tế từ env
-    origin: [process.env.FRONTEND_URL, 'http://localhost:5173'].filter(Boolean),
-    credentials: true,
-  });
-
+app.enableCors({
+  // Tạo mảng các domain được phép
+  origin: [
+    process.env.FRONTEND_URL, 
+    'http://localhost:5173'
+  ].filter((url): url is string => Boolean(url)), // Lọc bỏ các giá trị null/undefined
+  
+  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+  allowedHeaders: 'Content-Type,Accept,Authorization',
+  credentials: true,
+});
   // 3. Validation pipe (Giữ nguyên - Rất tốt cho bảo mật)
   app.useGlobalPipes(
     new ValidationPipe({
