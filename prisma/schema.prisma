@@ -1,0 +1,217 @@
+// GoalFlow Database Schema
+// PostgreSQL with Prisma ORM
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Enums
+enum Role {
+  USER
+  ADMIN
+}
+
+enum MilestoneStatus {
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+}
+
+enum Frequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+enum HabitPeriod {
+  DAY
+  WEEK
+  MONTH
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  SKIPPED
+}
+
+// Models
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      Role     @default(USER)
+  avatar    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  visions       Vision[]
+  tasks         Task[]
+  journals      Journal[]
+  settings      UserSettings?
+  refreshTokens RefreshToken[]
+}
+
+model UserSettings {
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dailyGoal     Int      @default(5)
+  pomodoroWork  Int      @default(25)
+  pomodoroBreak Int      @default(5)
+  soundEnabled  Boolean  @default(true)
+  theme         String   @default("dark")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model Vision {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  iconId      String?
+  icon        Icon?     @relation(fields: [iconId], references: [id], onDelete: SetNull)
+  title       String
+  description String?
+  targetDate  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  milestones Milestone[]
+}
+
+model Milestone {
+  id          String          @id @default(uuid())
+  visionId    String
+  vision      Vision          @relation(fields: [visionId], references: [id], onDelete: Cascade)
+  iconId      String?
+  icon        Icon?           @relation(fields: [iconId], references: [id], onDelete: SetNull)
+  title       String
+  description String?
+  targetDate  DateTime?
+  status      MilestoneStatus @default(ACTIVE)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  tasks       Task[]
+
+  // Relations
+  habits Habit[]
+}
+
+model Habit {
+  id              String      @id @default(uuid())
+  milestoneId     String?
+  milestone       Milestone?  @relation(fields: [milestoneId], references: [id], onDelete: SetNull)
+  title           String
+  description     String?
+  // Legacy fields (kept for backward compatibility)
+  frequency       Frequency   @default(DAILY)
+  frequencyTarget Int         @default(1)
+  frequencyPeriod HabitPeriod @default(DAY)
+  // New simplified frequency model: days per week (1-7)
+  frequencyPerWeek Int        @default(7)
+  reminder        String?
+  isActive        Boolean     @default(true)
+  icon            String? // Emoji icon for the habit
+  color           String? // Gradient color for the habit card
+  estimatedTime   Int? // Estimated time in minutes
+  streak          Int         @default(0) // Current streak count
+  completedToday  Boolean     @default(false) // Whether completed today
+  lastCompletedAt DateTime? // Last time the habit was completed
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  // Relations
+  tasks       Task[]
+  activities  HabitActivity[]
+  completions Completion[]
+}
+
+model Task {
+  id          String     @id @default(uuid())
+  userId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  habitId     String?
+  habit       Habit?     @relation(fields: [habitId], references: [id], onDelete: SetNull)
+  milestoneId String?
+  milestone   Milestone? @relation(fields: [milestoneId], references: [id], onDelete: SetNull)
+  title       String
+  description String?
+  status      TaskStatus @default(PENDING)
+  completedAt DateTime?
+  dueDate     DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  // Relations
+  completions Completion[]
+}
+
+model Journal {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reason      String
+  aiAnalysis  String?
+  streakCount Int      @default(0)
+  createdAt   DateTime @default(now())
+}
+
+model Icon {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  emoji     String
+  category  String?
+  createdAt DateTime @default(now())
+
+  // Relations
+  visions    Vision[]
+  milestones Milestone[]
+}
+
+model HabitActivity {
+  id        String   @id @default(uuid())
+  habitId   String
+  habit     Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
+  date      DateTime // Date of the activity (stored as date only, time stripped)
+  completed Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([habitId, date]) // One record per habit per day
+  @@index([habitId])
+  @@index([date])
+}
+
+model Completion {
+  id          String   @id @default(uuid())
+  habitId     String?
+  habit       Habit?   @relation(fields: [habitId], references: [id], onDelete: SetNull)
+  taskId      String?
+  task        Task?    @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  completedAt DateTime
+  createdAt   DateTime @default(now())
+
+  @@index([habitId])
+  @@index([taskId])
+  @@index([completedAt])
+}
