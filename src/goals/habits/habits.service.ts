@@ -316,6 +316,27 @@ async update(id: string, userId: string, dto: UpdateHabitDto) {
       return true;
     }
 
+    if (!allTasksCompleted && habit.completedToday) {
+      const now = new Date();
+
+      await this.prisma.habit.update({
+        where: { id: habitId },
+        data: {
+          completedToday: false,
+          lastCompletedAt: now,
+        },
+      });
+
+      // Remove today's completion activity and resync streak.
+      await this.logHabitActivity(habitId, false);
+
+      const newStreak = await this.calculateStreakByFrequency(habitId);
+      await this.prisma.habit.update({
+        where: { id: habitId },
+        data: { streak: newStreak },
+      });
+    }
+
     return false;
   }
 

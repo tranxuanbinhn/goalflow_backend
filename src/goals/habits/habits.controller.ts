@@ -27,11 +27,6 @@ export class HabitsController {
       totalActive,
     };
   }
-  @Get('habitss/:id')
-  async getStreak(@Param('id') id: string) {
-    const result = await this.habitsService.calculateStreakByFrequency(id);
-    return { streak: result };
-  }
 
   // Endpoint admin tạm thời để resync streak của một habit từ HabitActivity
   @Post(':id/resync-streak')
