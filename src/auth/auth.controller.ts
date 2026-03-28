@@ -11,6 +11,10 @@ export class AuthController {
   async register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
   }
+  @Get('ping')
+  getHello(): string {
+  return 'pong'; // Trả về text đơn giản, không query database
+}
 
   @Post('login')
   async login(@Body() dto: LoginDto) {
