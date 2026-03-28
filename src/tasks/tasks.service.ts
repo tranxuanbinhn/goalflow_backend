@@ -305,13 +305,16 @@ export class TasksService {
 
   async findOverdue(userId: string) {
     const now = new Date();
-    now.setHours(23, 59, 59, 999);
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
     return this.prisma.task.findMany({
       where: {
         userId,
-        status: 'PENDING',
-        dueDate: { lt: now },
+        status: { not: 'COMPLETED' as any },
+        OR: [
+          { dueDate: { lt: startOfToday } },
+          { dueDate: null, createdAt: { lt: startOfToday } },
+        ],
       },
       include: {
         habit: true,
